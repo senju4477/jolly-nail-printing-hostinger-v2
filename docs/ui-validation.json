@@ -1,0 +1,40 @@
+{
+  "browser": "153.0.8010.0",
+  "layouts": [
+    {
+      "width": 1440,
+      "horizontalOverflow": false
+    },
+    {
+      "width": 768,
+      "horizontalOverflow": false
+    },
+    {
+      "width": 390,
+      "horizontalOverflow": false
+    },
+    {
+      "width": 375,
+      "horizontalOverflow": false
+    }
+  ],
+  "interactions": [
+    "mobile menu",
+    "gallery filter",
+    "design dialog",
+    "all designs",
+    "video metadata",
+    "machine tabs",
+    "location search",
+    "FAQ",
+    "form saved and SQL row verified",
+    "form reset"
+  ],
+  "video": {
+    "readyState": 4,
+    "error": null,
+    "duration": 21.033333
+  },
+  "pageErrors": [],
+  "failedAssets": []
+}
