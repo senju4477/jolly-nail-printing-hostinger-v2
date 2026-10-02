@@ -1,18 +1,48 @@
-import { getD1 } from "@/db";
+import { getDb } from "@/db";
+import type { VenueEnquiryRow } from "@/db/schema";
+import { siteOrigin } from "@/lib/site-config";
+
+export const runtime = "nodejs";
 
 const allowedVenues = new Set(["Shopping centre", "Beauty venue / salon", "Entertainment venue", "Retail landlord", "Hotel / gym", "Other venue"]);
 const noCache = { "Cache-Control": "no-store" };
 
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) {
+  // SITE_URL also permits the public HTTPS origin behind Hostinger's Node proxy.
+  if (origin && origin !== new URL(request.url).origin && origin !== siteOrigin()) {
     return Response.json({ error: "Please send your enquiry from the Jolly website." }, { status: 403, headers: noCache });
   }
   if (!request.headers.get("content-type")?.includes("application/json")) {
     return Response.json({ error: "Send the form as JSON." }, { status: 415, headers: noCache });
   }
-  const textBody = await request.text();
-  if (textBody.length > 12000) return Response.json({ error: "Your message is too long. Please shorten it and try again." }, { status: 413, headers: noCache });
+  let textBody: string;
+  try {
+    if (Number(request.headers.get("content-length")) > 12000) throw new Error("BODY_TOO_LARGE");
+    const reader = request.body?.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    if (reader) {
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          size += value.byteLength;
+          if (size > 12000) {
+            await reader.cancel();
+            throw new Error("BODY_TOO_LARGE");
+          }
+          chunks.push(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
+    textBody = Buffer.concat(chunks).toString("utf8");
+  } catch (error) {
+    const tooLarge = error instanceof Error && error.message === "BODY_TOO_LARGE";
+    return Response.json({ error: tooLarge ? "Your message is too long. Please shorten it and try again." : "Please check your enquiry and try again." }, { status: tooLarge ? 413 : 400, headers: noCache });
+  }
   let body: Record<string, unknown>;
   try {
     const parsed = JSON.parse(textBody);
@@ -36,14 +66,30 @@ export async function POST(request: Request) {
   }
   const reference = "JLY-" + values.id.replaceAll("-", "").slice(0, 8).toUpperCase();
   try {
-    const db = getD1();
-    const result = await db.prepare(
-      "INSERT INTO venue_enquiries (id, reference, name, organisation, email, phone, venue_type, city, message, contact_consent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING"
-    ).bind(values.id, reference, values.name, values.organisation, values.email, values.phone, values.venueType, values.city, values.message, 1, Date.now()).run();
-    if (!result.success) throw new Error("Enquiry insert did not succeed.");
-    return Response.json({ reference, saved: true }, { status: 201, headers: noCache });
+    const connection = await getDb().getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute({
+        sql: "INSERT INTO venue_enquiries (id, reference, name, organisation, email, phone, venue_type, city, message, contact_consent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id = id",
+        timeout: 10_000,
+      }, [values.id, reference, values.name, values.organisation, values.email, values.phone, values.venueType, values.city, values.message, 1, Date.now()]);
+      const [rows] = await connection.execute<VenueEnquiryRow[]>({
+        sql: "SELECT reference FROM venue_enquiries WHERE id = ?",
+        timeout: 10_000,
+      }, [values.id]);
+      if (rows.length !== 1) throw new Error("ENQUIRY_NOT_STORED");
+      await connection.commit();
+      return Response.json({ reference: rows[0].reference, saved: true }, { status: 201, headers: noCache });
+    } catch (error) {
+      try { await connection.rollback(); } catch { /* Preserve the original failure. */ }
+      throw error;
+    } finally {
+      connection.release();
+    }
   } catch (error) {
-    console.error("Venue enquiry save failed:", error instanceof Error ? error.message : "unknown storage error");
+    // SQL error messages can contain submitted details. Log only a bounded code.
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "STORAGE_UNAVAILABLE";
+    console.error("Venue enquiry save failed:", /^[A-Z0-9_]{1,64}$/.test(code) ? code : "STORAGE_UNAVAILABLE");
     return Response.json({ error: "We couldn’t save your enquiry just now. Your details are still in the form. Try again, or email jollynailprinting@gmail.com." }, { status: 503, headers: noCache });
   }
 }
