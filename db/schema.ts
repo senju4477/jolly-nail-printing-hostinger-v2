@@ -1,15 +1,17 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import type { RowDataPacket } from "mysql2";
 
-export const venueEnquiries = sqliteTable("venue_enquiries", {
-  id: text("id").primaryKey(),
-  reference: text("reference").notNull(),
-  name: text("name").notNull(),
-  organisation: text("organisation").notNull(),
-  email: text("email").notNull(),
-  phone: text("phone").notNull(),
-  venueType: text("venue_type").notNull(),
-  city: text("city").notNull(),
-  message: text("message").notNull(),
-  contactConsent: integer("contact_consent", { mode: "boolean" }).notNull(),
-  createdAt: integer("created_at").notNull(),
-});
+// The versioned SQL schema is deploy/migrations/001-venue-enquiries.sql.
+// created_at retains the source's Unix epoch milliseconds, not local SQL time.
+export interface VenueEnquiryRow extends RowDataPacket {
+  id: string;
+  reference: string;
+  name: string;
+  organisation: string;
+  email: string;
+  phone: string;
+  venue_type: string;
+  city: string;
+  message: string;
+  contact_consent: number;
+  created_at: string;
+}
