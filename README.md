@@ -1,53 +1,47 @@
-# Jolly Nail Printing
+# Jolly Nail Printing — Hostinger version 2
 
-A premium, responsive website for an Australian self-service nail art printing business.
+An independent hosting migration of `senju4477/jolly-nail-printing`, source branch `main`, commit `ca269047f6367ae4389f84077a303c4e55f6bbb7`. The original repository and live website were left unchanged.
 
-Live website: https://jolly-nail-printing-studio.walkersaint402.chatgpt.site
+The homepage, wording, cobalt/porcelain/cherry branding, navigation, gallery, machine tabs, dialogs, FAQs, location search, fonts, images and machine video are preserved. `app/page.tsx`, `app/globals.css`, `lib/locations.ts` and every public asset are byte-identical to the source. Launch locations remain unconfirmed.
 
-## Included
+## Runtime
 
-- Cobalt, porcelain and cherry-red visual identity with original nail imagery.
-- Responsive navigation, design gallery filters, machine details and video dialogs.
-- Four-step customer experience and accessible FAQ accordions.
-- Location search with an honest coming-soon state.
-- Venue enquiry form with server validation and durable Cloudflare D1 storage.
-- Local fonts, images, machine footage and reduced-motion support.
+Official Next.js 16.3.8, React 19.2.6, TypeScript, Tailwind CSS, Radix UI and MySQL through `mysql2`. Node.js 22.x and npm are required. Vinext, Vite, Workers, D1 runtime bindings, Wrangler and unused provider scaffolding were removed from this copy. The source's optional auth/connector helpers were not used by any page or endpoint; the website has no account or connector-dependent features.
 
-## Technology
+Production builds use Webpack and Next's generated standalone server. `scripts/prepare-standalone.mjs` copies `public/` and `.next/static/` into the standalone artifact. `npm start` runs that artifact, honors `PORT`, defaults locally to 3000, and binds to `0.0.0.0`.
 
-React, TypeScript, Vinext with Vite, Tailwind CSS, Radix UI, Cloudflare Workers and Cloudflare D1. The production website currently uses Sites hosting. This repository preserves the website source and assets; it is not a static GitHub Pages export.
-
-## Local development
-
-Requires Node.js 22.13 or newer and pnpm 11.25.0, as declared in package.json.
+## Run locally
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm dev
+npm ci
+npm run lint
+npm run build
+npm run typecheck
+npm start
 ```
 
-The portable development server starts on port 5173. To build and preview the production Worker:
+For development use `npm run dev`. Copy `.env.example` to `.env.local` and enter values privately when configuring a local database. Hostinger values belong in hPanel. The website and build work without MySQL credentials; a valid venue enquiry returns HTTP 503 until the separate database and schema are configured.
+
+## Deploy
+
+Follow [docs/HOSTINGER-DEPLOYMENT.md](docs/HOSTINGER-DEPLOYMENT.md). Import this project into a **separate private GitHub repository**, then a separate Hostinger Node.js app. Do not connect the original repository or reuse a live website slot. Framework: Next.js; Node: 22; build script: `build`; output: `.next`; entry file: blank.
+
+Preview indexing is disabled by default through metadata, `X-Robots-Tag`, robots.txt and an empty sitemap. Supply the actual preview origin in `SITE_URL`. Changing it or `SITE_INDEXABLE` requires rebuilding because metadata and headers are baked into the build. Production cutover, DNS changes and enabling indexing require a separate launch instruction.
+
+## Venue enquiries
+
+The same `/api/venue-enquiries` endpoint and form fields are retained. Requests are validated, bounded, checked for origin and honeypot spam, and written through parameterized queries. Duplicate submission IDs do not insert another row or overwrite the original. Success is returned only after the transaction commits. Diagnostic logs exclude submitted details.
+
+Import [deploy/schema.mysql.sql](deploy/schema.mysql.sql) into the **new** database through phpMyAdmin. No SSH, migration URL or build-time database connection is required. See [docs/DATABASE-MIGRATION.md](docs/DATABASE-MIGRATION.md) for setup, retry checks and an offline D1 export conversion workflow. Original D1 records were not inspected or exported; their number and contents are unknown.
+
+The form stores enquiries; email notifications were not configured in the source and have not been added. The existing email links remain available. Photo upload, payment and nail printing happen on the physical machine as described in the source; this website has no upload or payment backend.
+
+## Verify
 
 ```sh
-pnpm build
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_large_randall_flagg.sql
-pnpm start
+npm run test:runtime
 ```
 
-Apply the migration once per fresh local database. Local Wrangler data is ignored by Git. Production needs the Cloudflare D1 binding named DB and the included migration; production binding identifiers and secrets are managed by the hosting platform.
+The default suite tests the standalone HTTP server, assets, preview SEO directives, validation, missing database behavior, ports and offline conversion. To include real database checks, provide `DB_*` for a disposable local MySQL database whose name begins `jolly_test_`, set `JOLLY_TEST_DATABASE=1`, and run the suite. It creates/imports the schema and deletes test rows in that isolated database; never point it at production.
 
-## Editing
-
-- Homepage: app/page.tsx
-- Visual styles: app/globals.css
-- Metadata: app/layout.tsx
-- Future confirmed machines: lib/locations.ts
-- Enquiry endpoint: app/api/venue-enquiries/route.ts
-- Enquiry schema and migration: db/schema.ts and drizzle/
-- Images, local fonts and videos: public/
-
-Launch locations are intentionally unconfirmed. Gallery images are design inspiration, not customer results. Enquiries are saved to the database; email notifications are not configured.
-
-Additional runtime and deployment notes: [docs/development.md](docs/development.md).
-
-Keep credentials, environment files, local database contents and build output out of Git. Existing third-party license notices are included with their respective files.
+See [docs/VALIDATION.md](docs/VALIDATION.md) for observed results and deployment limitations. [docs/source-manifest.json](docs/source-manifest.json) records the original source hashes. Credentials, private exports, dependency directories and generated builds are excluded from delivery. Third-party component and stylesheet notices are retained.
