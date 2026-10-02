@@ -24,7 +24,7 @@ For development use `npm run dev`. Copy `.env.example` to `.env.local` and enter
 
 ## Deploy
 
-Follow [docs/HOSTINGER-DEPLOYMENT.md](docs/HOSTINGER-DEPLOYMENT.md). Import this project into a **separate private GitHub repository**, then a separate Hostinger Node.js app. Do not connect the original repository or reuse a live website slot. Framework: Next.js; Node: 22; build script: `build`; output: `.next`; entry file: blank.
+Follow [docs/HOSTINGER-DEPLOYMENT.md](docs/HOSTINGER-DEPLOYMENT.md). This project is in the **separate private GitHub repository** `senju4477/jolly-nail-printing-hostinger-v2`, branch `main`. Import it into a separate Hostinger Node.js app. Do not connect the original repository or reuse a live website slot. Framework: Next.js; Node: 22; build script: `build`; output: `.next`; entry file: blank.
 
 Preview indexing is disabled by default through metadata, `X-Robots-Tag`, robots.txt and an empty sitemap. Supply the actual preview origin in `SITE_URL`. Changing it or `SITE_INDEXABLE` requires rebuilding because metadata and headers are baked into the build. Production cutover, DNS changes and enabling indexing require a separate launch instruction.
 
